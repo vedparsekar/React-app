@@ -1,0 +1,198 @@
+Confidentiality
+
+
+
+1. openssl rand 128 > symm.key
+
+
+
+2. nano plain.txt  //add some content
+
+
+
+3. openssl enc -in plain.txt -out cipher.txt -e -aes-128-cbc -kfile symm.key
+
+	
+
+4. openssl genrsa -out alicepriv.key 2048
+
+
+
+5. openssl rsa -in alicepriv.key -pubout -out alicepub.key
+
+
+
+6. openssl genrsa -out bobpriv.key 2048
+
+   openssl rsa -in bobpriv.key -pubout -out bobpub.key
+
+
+
+7. cp cipher.txt ../bob
+
+
+
+8. openssl rsautl -encrypt -pubin -inkey ../bob/bobpub.key  -in symm.key -out symm.enc.key 
+
+
+
+
+
+9. openssl rsautl -decrypt -inkey bobpriv.key -in ../alice/symm.enc.key -out symm.dec.key
+
+
+
+
+
+10. openssl enc -in cipher.txt -out cipher.dec.txt -d -aes-128-cbc -kfile symm.dec.key
+
+
+
+
+
+
+
+Integrity Check
+
+
+
+11. Alice computes sha-512 hash on plain.txt and store in hash.txt.
+
+	
+
+	openssl dgst -sha512 -out hash.txt -binary plain.txt
+
+	
+
+	//signing the file with private key using public key utility pkeyutl- can use any public key
+
+	openssl pkeyutl -sign -in hash.txt -inkey alicepriv.key  -pkeyopt digest:sha512  -out alicesign.sign
+
+
+
+12.	Alice verifies the hash.
+
+	
+
+	openssl dgst -verify alicepub.key -sha512 -signature alicesign.sign -binary plain.txt
+
+
+
+	o/p Verified OK
+
+
+
+13. Make minor changes to plain.txt and check that verification of hash now   
+
+	fails.  
+
+	
+
+	openssl dgst -verify alicepub.key -sha512 -signature alicesign.sign -binary plain.txt
+
+	
+
+	o/p Verification Failure
+
+
+
+	
+
+
+
+Authentication check
+
+
+
+14. Alice computes MAC on plain.txt using sha-512 and store in plain.mac.
+
+
+
+	openssl dgst -hmac -sha512 -out hash.mac -hex plain.txt
+
+	
+
+	//signing the file with private key 
+
+	openssl dgst -sha512 -sign alicepriv.key -out alicemacsign.sign plain.txt
+
+
+
+15. Alice verifies the MAC.
+
+
+
+	openssl dgst -sha512 -verify alicepub.key -signature alicemacsign.sign plain.txt
+
+	
+
+	o/p Verified OK
+
+
+
+
+
+16.	Make minor changes to plain.txt and check that verification of MAC now
+
+	fails.
+
+	
+
+	openssl dgst -sha512 -verify alicepub.key -signature alicemacsign.sign plain.txt
+
+	
+
+	o/p Verification Failure
+
+	
+
+	
+
+	
+
+Digital Signature
+
+
+
+17.	Alice creates sha-512 hash on plain.txt and signs it using her private key.
+
+	Store signed hash in file hash.sign.
+
+	
+
+	openssl dgst -sha512 -sign alicepriv.key -out hash.sign plain.txt
+
+	
+
+	
+
+18. Alice sends plain.txt and hash.sign to Bob.
+
+
+
+	cp plain.txt hash.sign ../bob/
+
+
+
+19.	Bob verifies the signature using the public key of Alice.
+
+	
+
+	openssl dgst -sha512 -verify ../alice/alicepub.key -signature hash.sign plain.txt
+
+
+
+	o/p Verified OK
+
+
+
+20.	Check that the verification fails if the file plain.txt is modified.
+
+	
+
+	openssl dgst -sha512 -verify ../alice/alicepub.key -signature hash.sign plain.txt
+
+
+
+	o/p Verification Failure
+
